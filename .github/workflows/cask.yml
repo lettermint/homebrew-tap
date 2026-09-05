@@ -1,0 +1,44 @@
+name: Cask
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: cask-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check version, provenance, cask, installation, and removal
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -f Casks/lettermint.rb ]; then
+            echo 'The first signed stable release will add the cask.'
+            exit 0
+          fi
+          version=$(python3 scripts/check-version.py)
+          if [ "$RUNNER_ARCH" = ARM64 ]; then arch=arm64; else arch=amd64; fi
+          archive="lettermint_${version}_darwin_${arch}.tar.gz"
+          directory=$(mktemp -d)
+          gh release download "v$version" --repo lettermint/lettermint-cli --pattern "$archive" --pattern provenance.jsonl --dir "$directory"
+          gh attestation verify "$directory/$archive" --repo lettermint/lettermint-cli --bundle "$directory/provenance.jsonl" --signer-workflow lettermint/lettermint-cli/.github/workflows/release.yml --source-ref "refs/tags/v$version"
+          brew tap lettermint/tap
+          cp Casks/lettermint.rb "$(brew --repository lettermint/tap)/Casks/lettermint.rb"
+          brew style --cask lettermint/tap/lettermint
+          brew audit --cask --online lettermint/tap/lettermint
+          brew install --cask lettermint/tap/lettermint
+          trap 'brew uninstall --cask lettermint/tap/lettermint' EXIT
+          test "$(lettermint version --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')" = "$version"
+          brew reinstall --cask lettermint/tap/lettermint
