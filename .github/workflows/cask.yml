@@ -35,7 +35,9 @@ jobs:
           gh release download "v$version" --repo lettermint/lettermint-cli --pattern "$archive" --pattern provenance.jsonl --dir "$directory"
           gh attestation verify "$directory/$archive" --repo lettermint/lettermint-cli --bundle "$directory/provenance.jsonl" --signer-workflow lettermint/lettermint-cli/.github/workflows/release.yml --source-ref "refs/tags/v$version"
           brew tap lettermint/tap
-          cp Casks/lettermint.rb "$(brew --repository lettermint/tap)/Casks/lettermint.rb"
+          cask_directory="$(brew --repository lettermint/tap)/Casks"
+          mkdir -p "$cask_directory"
+          cp Casks/lettermint.rb "$cask_directory/lettermint.rb"
           brew style --cask lettermint/tap/lettermint
           brew audit --cask --online lettermint/tap/lettermint
           brew install --cask lettermint/tap/lettermint
