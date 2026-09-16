@@ -23,6 +23,7 @@ jobs:
       - name: Check version, provenance, cask, installation, and removal
         env:
           GH_TOKEN: ${{ github.token }}
+          HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
         run: |
           if [ ! -f Casks/lettermint.rb ]; then
             echo 'The first signed stable release will add the cask.'
