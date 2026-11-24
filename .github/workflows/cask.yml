@@ -50,3 +50,15 @@ jobs:
           trap 'brew uninstall --cask lettermint/tap/lettermint' EXIT
           test "$(lettermint version --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')" = "$version"
           brew reinstall --cask lettermint/tap/lettermint
+
+  # The one check branch protection requires. It fails when a job above failed or
+  # was cancelled; skipped jobs count as passed.
+  ci:
+    name: ci
+    if: ${{ always() }}
+    needs: [check]
+    runs-on: ubuntu-slim
+    steps:
+      - name: Fail when a job failed or was cancelled
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1

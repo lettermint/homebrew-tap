@@ -14,11 +14,13 @@ def cask_version(text):
     return tuple(map(int, matches[0].split(".")))
 
 
-candidate = cask_version(Path("Casks/lettermint.rb").read_text())
+cask = Path("Casks/lettermint.rb").read_text()
+candidate = cask_version(cask)
 if os.environ.get("GITHUB_EVENT_NAME") == "pull_request":
     subprocess.run(["git", "fetch", "origin", "+refs/heads/main:refs/remotes/origin/main"], check=True)
     current = subprocess.run(["git", "show", "refs/remotes/origin/main:Casks/lettermint.rb"], capture_output=True, text=True)
-    if current.returncode == 0 and cask_version(current.stdout) >= candidate:
+    # A pull request that leaves the cask as it is on main does not have to raise the version.
+    if current.returncode == 0 and current.stdout != cask and cask_version(current.stdout) >= candidate:
         raise ValueError("The cask must be newer than the version on main.")
 pages = json.loads(subprocess.check_output(["gh", "api", "--paginate", "--slurp", "repos/lettermint/lettermint-cli/releases?per_page=100"], text=True))
 versions = []
